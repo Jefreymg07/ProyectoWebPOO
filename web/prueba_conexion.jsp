@@ -1,59 +1,91 @@
-<%@page import="sv.edu.udb.entities.Usuario"%>
-<%@page import="sv.edu.udb.dao.UsuarioDAO"%>
+<%@page import="java.util.Calendar"%>
+<%@page import="java.util.Date"%>
+<%@page import="java.util.List"%>
+<%@page import="sv.edu.udb.entities.Prestamo"%>
+<%@page import="sv.edu.udb.dao.PrestamoDAO"%>
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Test DAO Login</title>
+        <title>Test PrestamoDAO</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="container mt-5">
         <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h3>🛠️ Prueba Unitaria: UsuarioDAO</h3>
+            <div class="card-header bg-warning text-dark">
+                <h3>📖 Prueba de Transacción: Préstamos</h3>
             </div>
             <div class="card-body">
-                <p>Intentando conectar con las credenciales que encontramos en tu BD:</p>
-                <ul>
-                    <li>Usuario: <b>admin</b></li>
-                    <li>Contraseña: <b>12345</b></li>
-                </ul>
-                <hr>
+                
+                <h4>1. Intentando registrar un préstamo...</h4>
                 <%
-                    // 1. Instanciamos el DAO
-                    UsuarioDAO dao = new UsuarioDAO();
+                    PrestamoDAO dao = new PrestamoDAO();
                     
-                    // 2. Probamos con la contraseña CORRECTA ("12345")
-                    Usuario u = dao.validarUsuario("admin", "12345");
+                    // --- PREPARAR DATOS ---
+                    // Asumimos que existe el Usuario con ID 1 (admin)
+                    // Asumimos que existe el Material con ID 1 (El primer libro que insertaste)
+                    int idUsuario = 1; 
+                    int idMaterial = 1;
                     
-                    if(u != null) {
-                %>
-                    <div class="alert alert-success border-success">
-                        <h4 class="alert-heading">✅ ¡LOGIN EXITOSO!</h4>
-                        <p>El sistema reconoció al usuario correctamente.</p>
-                        <hr>
-                        <strong>Datos recuperados de la BD:</strong>
-                        <ul>
-                            <li>ID: <%= u.getId() %></li>
-                            <li>Rol: <%= u.getRol() %></li>
-                            <li>Estado: <%= u.getEstado() %></li>
-                        </ul>
-                    </div>
-                <%
+                    // Calcular fecha de devolución (Hoy + 7 días)
+                    Calendar cal = Calendar.getInstance();
+                    Date fechaHoy = cal.getTime();
+                    cal.add(Calendar.DAY_OF_YEAR, 7); // Sumamos 7 días
+                    Date fechaDevolucion = cal.getTime();
+                    
+                    // Crear el objeto Prestamo
+                    Prestamo nuevoP = new Prestamo(idUsuario, idMaterial, fechaHoy, fechaDevolucion);
+                    
+                    // --- INSERTAR ---
+                    // Solo insertamos si no es una recarga (para no llenar de basura la BD)
+                    // Pero para esta prueba, lo haremos directo.
+                    boolean registrado = dao.insertar(nuevoP);
+                    
+                    if(registrado) {
+                        out.println("<div class='alert alert-success'>✅ Préstamo registrado correctamente en la BD.</div>");
                     } else {
-                %>
-                    <div class="alert alert-danger border-danger">
-                        <h4 class="alert-heading">❌ LOGIN FALLIDO</h4>
-                        <p>El DAO devolvió null. Posibles causas:</p>
-                        <ul>
-                            <li>La contraseña no es "12345" (revisa espacios en blanco).</li>
-                            <li>El usuario no tiene estado 'Activo'.</li>
-                            <li>La consulta SQL en UsuarioDAO tiene algún error de nombres de columna.</li>
-                        </ul>
-                    </div>
-                <%
+                        out.println("<div class='alert alert-danger'>❌ Error al registrar. Revisa IDs o consola.</div>");
                     }
                 %>
+                
+                <hr>
+                
+                <h4>2. Consultando préstamos activos...</h4>
+                <table class="table table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID Préstamo</th>
+                            <th>ID Usuario</th>
+                            <th>ID Material</th>
+                            <th>Fecha Préstamo</th>
+                            <th>Devolución Prevista</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <%
+                            List<Prestamo> lista = dao.obtenerPrestamosActivos();
+                            
+                            if(lista.isEmpty()) {
+                                out.println("<tr><td colspan='6' class='text-center'>No hay préstamos activos.</td></tr>");
+                            } else {
+                                for(Prestamo p : lista) {
+                        %>
+                            <tr>
+                                <td><%= p.getIdPrestamo() %></td>
+                                <td><%= p.getIdUsuario() %></td>
+                                <td><%= p.getIdMaterial() %></td>
+                                <td><%= p.getFechaPrestamo() %></td>
+                                <td style="color:red; font-weight:bold"><%= p.getFechaDevolucionPrevista() %></td>
+                                <td><span class="badge bg-primary"><%= p.getEstado() %></span></td>
+                            </tr>
+                        <%
+                                }
+                            }
+                        %>
+                    </tbody>
+                </table>
+                
             </div>
         </div>
     </body>
